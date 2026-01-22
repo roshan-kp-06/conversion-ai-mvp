@@ -3,6 +3,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { checkDatabaseConnection, disconnectDatabase } from './lib/prisma';
 import authRoutes from './routes/auth.routes';
+import onboardingRoutes from './routes/onboarding.routes';
+import contactsRoutes from './routes/contacts.routes';
+import emailRoutes from './routes/email.routes';
 
 // Load environment variables
 dotenv.config();
@@ -26,8 +29,14 @@ app.get('/health', async (_req: Request, res: Response) => {
 
 // API Routes (v1)
 app.use('/api/v1/auth', authRoutes);
-// Also expose auth at root for convenience
+app.use('/api/v1/onboarding', onboardingRoutes);
+app.use('/api/v1/contacts', contactsRoutes);
+app.use('/api/v1/emails', emailRoutes);
+// Also expose at root for convenience
 app.use('/auth', authRoutes);
+app.use('/onboarding', onboardingRoutes);
+app.use('/contacts', contactsRoutes);
+app.use('/emails', emailRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {
