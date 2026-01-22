@@ -16,11 +16,10 @@ import { Pool } from 'pg';
 // Ensure env vars are loaded (needed when this module is imported first)
 dotenv.config();
 
-// Declare global type for prisma instance in development
-declare global {
-  // eslint-disable-next-line no-var
-  var prisma: PrismaClient | undefined;
-}
+// Extend globalThis type for prisma instance in development
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
 
 /**
  * Extract direct PostgreSQL URL from prisma+postgres:// URL
@@ -70,11 +69,11 @@ const prismaClientSingleton = () => {
 
 // Use existing global instance or create new one
 // This prevents multiple instances during hot reload in development
-export const prisma = globalThis.prisma ?? prismaClientSingleton();
+export const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
 
 // Store instance globally in development to prevent multiple connections
 if (process.env.NODE_ENV !== 'production') {
-  globalThis.prisma = prisma;
+  globalForPrisma.prisma = prisma;
 }
 
 /**
