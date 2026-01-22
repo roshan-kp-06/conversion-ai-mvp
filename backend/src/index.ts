@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { checkDatabaseConnection, disconnectDatabase } from './lib/prisma';
+import authRoutes from './routes/auth.routes';
 
 // Load environment variables
 dotenv.config();
@@ -22,6 +23,9 @@ app.get('/health', async (_req: Request, res: Response) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// API Routes
+app.use('/auth', authRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {
