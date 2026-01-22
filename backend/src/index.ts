@@ -24,7 +24,9 @@ app.get('/health', async (_req: Request, res: Response) => {
   });
 });
 
-// API Routes
+// API Routes (v1)
+app.use('/api/v1/auth', authRoutes);
+// Also expose auth at root for convenience
 app.use('/auth', authRoutes);
 
 // 404 handler
