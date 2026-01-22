@@ -1,0 +1,130 @@
+// Conversion.ai MVP - Database Schema
+// 5 Tables: User, ProductContext, Contact, CompanyResearch, Email
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// User account
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  password       String          // bcrypt hash
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  productContext ProductContext?
+  contacts       Contact[]
+  emails         Email[]
+}
+
+// User's product/business context for personalization
+model ProductContext {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  productName      String
+  productDescription String @db.Text
+  targetAudience   String   @db.Text
+  painPoints       String   @db.Text
+  valueProposition String   @db.Text
+  tone             String   @default("professional") // professional, friendly, casual
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Contact/Lead to email
+model Contact {
+  id             String          @id @default(cuid())
+  userId         String
+  email          String
+  firstName      String?
+  lastName       String?
+  companyDomain  String?         // Extracted from business email
+  researchStatus ResearchStatus  @default(pending)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyResearch CompanyResearch? @relation(fields: [companyDomain], references: [domain])
+  emails          Email[]
+
+  @@unique([userId, email]) // User can't have duplicate contacts
+  @@index([userId])
+  @@index([companyDomain])
+}
+
+// Research status enum
+enum ResearchStatus {
+  pending    // Waiting to be researched
+  processing // Currently being researched
+  complete   // Research completed
+  failed     // Research failed (unknown domain, API error)
+  na         // Not applicable (personal email)
+}
+
+// Company enrichment data from Clearbit/Apollo
+model CompanyResearch {
+  domain         String   @id // e.g., "acme.com"
+  companyName    String?
+  industry       String?
+  description    String?  @db.Text
+  employeeCount  String?  // Range like "11-50", "51-200"
+  location       String?
+  website        String?
+  linkedinUrl    String?
+  twitterUrl     String?
+  technologies   String[] // Array of tech stack
+  rawData        Json?    // Full API response
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  contacts Contact[]
+}
+
+// Email sent to contact
+model Email {
+  id                String      @id @default(cuid())
+  userId            String
+  contactId         String
+  subject           String
+  bodyText          String      @db.Text
+  bodyHtml          String?     @db.Text
+  status            EmailStatus @default(draft)
+  sendgridMessageId String?     // For tracking delivery
+  openedAt          DateTime?
+  clickedAt         DateTime?
+  bouncedAt         DateTime?
+  createdAt         DateTime    @default(now())
+  sentAt            DateTime?
+  updatedAt         DateTime    @updatedAt
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([contactId])
+  @@index([status])
+}
+
+// Email status enum
+enum EmailStatus {
+  draft      // Not sent yet
+  queued     // Ready to send
+  sent       // Sent successfully
+  delivered  // Confirmed delivery
+  opened     // Recipient opened
+  clicked    // Recipient clicked link
+  bounced    // Bounced
+  failed     // Failed to send
+}
