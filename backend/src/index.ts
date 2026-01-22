@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { checkDatabaseConnection, disconnectDatabase } from './lib/prisma';
 
 // Load environment variables
 dotenv.config();
@@ -12,9 +13,14 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Health check endpoint
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok' });
+// Health check endpoint with database status
+app.get('/health', async (_req: Request, res: Response) => {
+  const dbConnected = await checkDatabaseConnection();
+  res.json({
+    status: 'ok',
+    database: dbConnected ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // 404 handler
@@ -34,7 +40,21 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📋 Health check: http://localhost:${PORT}/health`);
 });
+
+// Graceful shutdown
+const gracefulShutdown = async (signal: string) => {
+  console.log(`\n${signal} received. Shutting down gracefully...`);
+  server.close(async () => {
+    console.log('HTTP server closed.');
+    await disconnectDatabase();
+    console.log('Database connection closed.');
+    process.exit(0);
+  });
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
